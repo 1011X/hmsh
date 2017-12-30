@@ -1,0 +1,80 @@
+/* styles */
+/* called by your view template */
+
+/* You might want to try something fancier: */
+/* less: http://lesscss.org/ */
+
+* {
+    margin: 0;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-flow: column;
+}
+
+#input {
+  flex: 0 1 auto;
+  font-family: monospace;
+  font-size: 12pt;
+  padding: 1px;
+  border: 0;
+  border-top: 1px solid black;
+}
+
+#cwd {
+  flex: 0 1 auto;
+  font-family: monospace;
+  font-size: 12pt;
+  padding: 1px;
+  border: 0;
+  border-top: 1px solid black;
+}
+
+#output {
+    padding: 5px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+#output > * {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.error {
+    background: #ff7777;
+}
+
+.input {
+    background: #cccccc;
+    font-size: 12pt;
+}
+
+.path {
+    text-decoration: underline;
+}
+
+.path:hover {
+    cursor: pointer;
+}
+
+dt {
+    margin-top: 0.5em;
+}
+
+dd {
+    margin: 0 0 0.5em 1.5em;
+}
+
+li {
+    list-style-type: circle;
+}
+
+ul > details {
+    margin-left: -1em;
+}
