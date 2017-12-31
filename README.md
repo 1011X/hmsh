@@ -1,27 +1,12 @@
-Welcome to the HyperDev BETA
+Hypermedia Shell
 ============================
 
-Click `"Show"` in the header to see your app live. Updates to your code will instantly deploy and update live.
+Welcome to the glitch branch of the hypermedia shell!
 
-HyperDev is a developer playground that lets you code a real web-app without the slow setup and deployment steps. 
+This is a proof-of-concept created using [glitch.me](https://glitch.me). It's a Node.JS application that runs a shell program on the browser with hypermedia capabilities, and using the server's storage as a filesystem. You can try it out at [hmsh.glitch.me](https://hmsh.glitch.me).
 
-[About HyperDev](https://hyperdev.com/about)
+My intention is to make hmsh an actual desktop application. However, due to personal technical limitations, it's a bit difficult to do so. A path I'm considering to accomplish this is to use [Servo](https://github.com/servo/servo). Haven't accomplished much, but I'll keep trying.
 
+Made using [glitch.me](https://glitch.me)
 
-Your Project
-------------
-
-On the back-end,
-- your app starts at `server.js`
-- add frameworks and packages in `package.json`
-- safely store app secrets in `.env`
-
-On the front-end,
-- edit `client.js`, `style.css` and `index.html`
-- drag in `assets`, like images or music, to add them to your project
-
-
-Made by Fog Creek
------------------
-
-\ ゜o゜)ノ
+\( ゜o゜)ノ
