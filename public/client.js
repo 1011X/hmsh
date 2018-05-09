@@ -1,7 +1,6 @@
 // client-side js
 // run by the browser each time your view template is loaded
 
-
 // TODO ideas:
 // * look at features in `window.console`
 // * pipes, but maintain data and its structure
@@ -21,51 +20,62 @@ var cwddiv = document.getElementById("cwd")
 cwddiv.textContent = location.pathname
 
 let root_fs = Object.create(null)
+// TODO check if the path in the url bar exists. if so, automatically go to it.
+// if not, revert to root path as cwd and change pathname in url bar.
 let [_, ...cwpath] = location.pathname == '/' ? [] : location.pathname.split('/')
-let cmd_hist = []
-let hist_idx = 0
+let history = new CommandHistory
 let env = Object.create(null)
-env['CWD'] = location.pathname
+env["cwd"] = location.pathname
 
 
-// turns any path into an absolute path
-function resolve_path(path) {
-    path = path.split("/")
-    
-    // if path is absolute
-    if (path[0] == "") {
-        // path is the root
-        if (path[1] == "") { path = [] }
-        else { path.shift() }
+// turns any path into a canonical absolute path
+function canonicalize(path) {
+  if(path == "/")
+    return "/"
+  
+  let components = path.split("/")
+  
+  if (components[0] == "") {
+    // path is absolute
+    components.shift()
+  }
+  // path is relative; resolve with current directory
+  else {
+    let cwd = env["cwd"]
+    if(!cwd.endsWith('/')) cwd += '/'
+    components = (cwd + path).split('/')
+    components.shift()
+  }
+
+  // remove any double-dots
+  for (let i = 0; i < components.length;) {
+    if (components[i] == "..") {
+      if (i == 0) {
+        // just remove any double-dot immediately after root
+        components.shift()
+      }
+      else {
+        // convert each ["dirname", ".."] to []
+        components.splice(i - 1, 2)
+        i -= 1 // bc we rm prev pos
+      }
+      continue
     }
-    // pash is relative; resolve with cwpath
-    else {
-        path = cwpath.concat(path)
-    }
-    
-    // remove any double-dots
-    // start at end of cwpath, since it won't have double-dots
-    for (let i = cwpath.length; i < path.length;) {
-        if (path[i] == "..") {
-            // just remove any double-dot immediately after root
-            if (i == 0) { path.shift() }
-            else {
-                // convert each ["dirname", ".."] to []
-                path.splice(i - 1, 2)
-                i -= 1 // bc we rm prev pos
-            }
-            continue
-        }
-        i += 1
-    }
-    
-    return path
+    i += 1
+  }
+  
+  return "/" + components.join('/')
 }
 
-// takes an array of strings (path components) and uses them
-// to walk down the tree
-function deref_path(path) {
-    return path.reduce((dir, name) => dir[name], root_fs)
+// take a path and uses it to walk down the tree.
+// assumes path is canonical.
+function opendir(path) {
+  if(path == "/")
+    return root_fs
+  
+  let components = path.split('/')
+  components.shift()
+  return components.reduce((dir, name) => dir[name], root_fs)
 }
 
 function evnop(e) {
@@ -79,46 +89,40 @@ input.addEventListener("keyup", evt => {
     evt.stopPropagation()
     
     if (evt.key == "Enter") {
-        let pre = document.createElement("pre")
-        pre.innerHTML = `/${cwpath.join("/")}> <kbd>${input.value}</kbd>`
-        pre.classList.add("input")
-        output.appendChild(pre)
-        
-        run(input.value)
-        
-        // if index points somewhere, place at end of list
-        if (hist_idx < cmd_hist.length) {
-            let [cmd] = cmd_hist.splice(hist_idx, 1)
-            hist_idx = cmd_hist.push(cmd)
-        }
-        else {
-            hist_idx = cmd_hist.push(input.value)
-        }
-        
-        input.value = ""
-        output.scrollTop = output.scrollTopMax
+      let div = document.createElement("div")
+      div.innerHTML = `<kbd>${input.value}</kbd>`
+      div.classList.add("input")
+      output.appendChild(div)
+
+      // there can be 2 situations:
+      // * a new command is sent, and is then pushed to the history
+      //   stack
+      // * an old command is re-entered, and is then moved to the
+      //   end of the stack
+      let cmd = history.at_latest() ?
+        history.push(input.value)
+        : history.fetch()
+      
+      // run the command!
+      run(cmd)
+      
+      // reset input buffer
+      input.value = ""
+      // scroll down to show the result
+      output.scrollTop = output.scrollTopMax
     }
-    // History
+    // History navigation
     else if (evt.key == "ArrowUp") {
-        hist_idx -= 1
-        hist_idx = Math.max(0, hist_idx)
-        
-        input.value = cmd_hist[hist_idx]
+      input.value = history.up()
     }
     else if (evt.key == "ArrowDown") {
-        hist_idx += 1
-        hist_idx = Math.min(cmd_hist.length, hist_idx)
-        
-        if (hist_idx == cmd_hist.length) {
-            input.value = ""
-        }
-        else {
-            input.value = cmd_hist[hist_idx]
-        }
+      input.value = history.down()
     }
 })
 
-// need these bc browser opens file if we don't have them
+
+
+// need these bc browser opens the file otherwise
 window.addEventListener("dragexit", evnop)
 window.addEventListener("dragover", evnop)
 window.addEventListener("drop", evt => {
@@ -126,7 +130,7 @@ window.addEventListener("drop", evt => {
     evt.stopPropagation()
     
     for(let file of evt.dataTransfer.files) {
-        let cwd = cwpath.reduce((dir, name) => dir[name], root_fs)
+        let cwd = deref_path(env["cwd"])
         let out = document.createElement("div")
         
         cwd[file.name] = file
@@ -156,13 +160,13 @@ function run(command) {
         }
     }
     */
-    let [cmd, ...args] = command.trim().split(" ").filter(s => s.length > 0)
+    let [cmd, ...args] = command.trim().split(/\s+/).filter(s => s.length > 0)
     
     // TODO: how to handle function output in general
     let ctx = {
-        cwpath, root_fs, deref_path, resolve_path, env,
+        root_fs, opendir, canonicalize, env,
         
-        cwd: deref_path(cwpath),
+        cwd: opendir(env["cwd"]),
         out: output,
         
         is_file(obj) {
@@ -175,9 +179,11 @@ function run(command) {
         
         // open file. if it doesn't exist, create it
         open(path) {
-            let parent = resolve_path(path)
+          let split_path = canonicalize(path).split('/')
+            let parent = canonicalize(path)
+            
             let name = parent.pop()
-            parent = deref_path(parent)
+            parent = opendir(parent)
             
             if (!(name in parent)) {
                 parent[name] = new Blob
@@ -187,9 +193,9 @@ function run(command) {
         },
         
         save(path, data) {
-            let parent = resolve_path(path)
+            let parent = canonicalize(path)
             let name = parent.pop()
-            parent = deref_path(parent)
+            parent = opendir(parent)
             
             parent[name] = new File([data], name)
         },
@@ -209,35 +215,47 @@ function run(command) {
                 if (ev.key == "Enter") { handler(ev) }   
             })
             span.textContent = name
-            return span
+            return span.outerHTML
         },
         
-        div(str = "") {
+        ediv(str = "") {
             let elem = document.createElement("div")
+            elem.classList.add("error")
             elem.innerHTML = `<b>${cmd}</b>: ${str}`
             return elem
         },
         
-        ediv(str = "") {
-            let elem = this.div(str)
-            elem.classList.add("error")
-            return elem
-        },
-        
-        print(str, elem = "div") {
-            let out = document.createElement(elem)
+        println(str) {
+            let out = document.createElement("div")
+            out.classList.add("output")
             out.innerHTML = `<b>${cmd}</b>: ${str}`
             output.appendChild(out)
             output.scrollTop = output.scrollTopMax
         },
         
-        eprint(str) {
+        eprintln(str) {
             let out = document.createElement("div")
             out.classList.add("error")
             out.innerHTML = `<b>${cmd}</b>: ${str}`
             output.appendChild(out)
             output.scrollTop = output.scrollTopMax
-        }
+        },
+        
+        show(str) {
+            let out = document.createElement("div")
+            out.classList.add("output")
+            out.innerHTML = `<b>${cmd}</b>: <div>${str}</div>`
+            output.appendChild(out)
+            output.scrollTop = output.scrollTopMax
+        },
+        
+        eshow(str) {
+            let out = document.createElement("div")
+            out.classList.add("error")
+            out.innerHTML = `<b>${cmd}</b>: <div>${str}</div>`
+            output.appendChild(out)
+            output.scrollTop = output.scrollTopMax
+        },
     }
     
     if (commands[cmd]) {

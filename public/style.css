@@ -18,41 +18,61 @@ body {
 }
 
 #input {
-  flex: 0 1 auto;
+  flex: initial;
   font-family: monospace;
   font-size: 12pt;
-  padding: 1px;
+  padding: 5px;
   border: 0;
   border-top: 1px solid black;
 }
 
 #cwd {
-  flex: 0 1 auto;
+  flex: initial;
   font-family: monospace;
   font-size: 12pt;
-  padding: 1px;
+  padding: 5px;
   border: 0;
   border-top: 1px solid black;
 }
 
 #output {
-    padding: 5px;
-    flex: 1 1 auto;
+    padding: 4px;
+    flex: auto;
     overflow-y: auto;
 }
 
 #output > * {
-    padding-top: 3px;
-    padding-bottom: 3px;
+    margin: 4px;
 }
 
 .error {
-    background: #ff7777;
+  background: #f77;
+  margin: 2px;
+  padding: 2px;
+}
+
+.error::before {
+  content: "✕ ";
 }
 
 .input {
-    background: #cccccc;
     font-size: 12pt;
+    margin: 2px;
+    padding: 2px;
+    background-color: #ccc;
+}
+
+.input::before {
+    content: "← ";
+}
+
+.output {
+    font-size: 12pt;
+    padding: 3px;
+}
+
+.output::before {
+    content: "→ ";
 }
 
 .path {
@@ -77,4 +97,8 @@ li {
 
 ul > details {
     margin-left: -1em;
+}
+
+kbd {
+  font-size: 11pt;
 }

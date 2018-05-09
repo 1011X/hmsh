@@ -22,7 +22,7 @@ echo(ctx, args) {
     }
   }
 
-  ctx.print(args.join(separate_with_spaces ? " " : ""))
+  ctx.println(args.join(separate_with_spaces ? " " : ""))
     /*
     MAIN:
     let w = new Worker("echo.js")
@@ -59,11 +59,11 @@ echo(ctx, args) {
 
 // list files and folders in cwd
 ls(ctx, args) {
-    let path = args[0] ? ctx.resolve_path(args[0]) : ctx.cwpath
+    let path = args[0] || "."
     let list = dir_expand(path)
     
     function dir_expand(path) {
-        let dir = ctx.deref_path(path)
+        let dir = ctx.opendir(path)
         let ul = document.createElement("ul")
         
         for (let name in dir) {
@@ -99,7 +99,7 @@ ls(ctx, args) {
     }
     
     if (list.childElementCount == 0) {
-        ctx.print("This directory is empty.")
+        ctx.println("This directory is empty.")
     }
     else {
         ctx.out.appendChild(list)
@@ -110,73 +110,72 @@ ls(ctx, args) {
 // virtual filesystem
 mkdir(ctx, args) {
   for(let arg of args) {
-    /*let req = new Request("/" + ctx.cwpath.join('/'), {
+    /*let req = new Request(ctx.env["cwd"], {
       method: "POST",
       body: "mkdir " + arg,
     })*/
     ctx.cwd[arg] = Object.create(null)
-    ctx.print(`Folder "${arg}" created`)
+    ctx.println(`Folder "${arg}" created`)
   }
 },
 
 // remove file or directory
 rm(ctx, args) {
-    let paths = args.map(ctx.resolve_path)
-    
-    for (let path of paths) {
-        let p = Array.from(path)
-        let cwpath = "/" + ctx.cwpath.join('/')
+    for (let path of args) {
+        let absolute_path = ctx.canonicalize(path)
+        // FIXME: finish making Path class so .pop() works
         let name = path.pop()
-        let parent = ctx.deref_path(path)
+        let parent = ctx.opendir(path)
         
-        // check cwd isn't a child directory whose parent is about to be deleted
-        if (!cwpath.startsWith(`/${p.join('/')}`)) {
-            delete parent[name]
-            /*let req = new Request("/" + ctx.cwpath.join('/'), {
-              method: "DELETE",
-            })*/
-            ctx.print(`Deleted /${p.join("/")}`)
+        // cwd is a child directory whose parent is about to be deleted
+        if (ctx.env["cwd"].startsWith(absolute_path)) {
+            ctx.eprintln("Can't delete parent of current directory.")
+            ctx.eprintln(`Path: ${ctx.path_link(path)}`)
+            ctx.eprintln(`CWD: ${ctx.path_link(ctx.env["CWD"])}`)
+            return
         }
-        else {
-            ctx.eprint("Can't delete parent of current directory.")
-            
-            let elem = ctx.ediv("Path: ")
-            elem.appendChild(ctx.path_link(p))
-            ctx.out.appendChild(elem)
-            
-            elem = ctx.ediv("CWD: ")
-            elem.appendChild(ctx.path_link(ctx.cwpath))
-            ctx.out.appendChild(elem)
+        
+        if (!parent[name]) {
+            ctx.eprintln(`No such file or directory: ${path}`)
+            return
         }
+        
+        delete parent[name]
+        ctx.println(`Deleted /${absolute_path}`)
     }
 },
 
 // change current directory
 cd(ctx, args) {
-    let path = ctx.resolve_path(args[0])
-    let newcwd = ctx.deref_path(path)
-    
-    // error when dereferencing path
-    if (newcwd == undefined) {
-        throw new Error(`Directory does not exist: <kbd>${args[0]}</kbd>`)
-    }
-    
-    if (!ctx.is_dir(newcwd)) {
-        throw new Error(`Not a directory: <kbd>${args[0]}</kbd>`)
-    }
-    
-    cwpath = path
-    
-    // update cwd div
-    let p = "/" + cwpath.join("/")
-    window.cwddiv.textContent = p
-    window.history.pushState({}, null, p)
-    ctx.print(`Now in <kbd>${p}</kbd>`)
+  if(args[0] == undefined) {
+    throw "No path given"
+  }
+  
+  let path = ctx.canonicalize(args[0])
+  let newcwd = ctx.opendir(path)
+
+  // error when dereferencing path
+  if (newcwd == undefined) {
+      throw `Directory does not exist: <kbd>${args[0]}</kbd>`
+  }
+
+  if (!ctx.is_dir(newcwd)) {
+      throw `Not a directory: <kbd>${args[0]}</kbd>`
+  }
+
+  ctx.env["cwd"] = path
+
+  // update cwd div
+  let p = ctx.env["cwd"]
+  window.cwddiv.textContent = p
+  // TODO: hm, do something with this?
+  window.history.pushState({}, null, p)
+  ctx.println(`Now in <kbd>${p}</kbd>`)
 },
 
 // present media on output display
 show(ctx, args) {
-    let file = ctx.deref_path(ctx.resolve_path(args[0]))
+    let file = ctx.open(ctx.canonicalize(args[0]))
     let reader = new FileReader
     let scroll_update = () => {output.scroll(0, output.scrollTopMax)}
     
@@ -240,16 +239,16 @@ show(ctx, args) {
         reader.readAsText(file)
     }
     else {
-        throw new Error(`Don't know how to open <kbd>${file.name}</kbd>`)
+        throw `Don't know how to open <kbd>${file.name}</kbd>`
     }
 },
 
 help(ctx, args) {
-    ctx.print("Files can be imported by drag-and-drop.")
-    ctx.print("Current directory is shown above the input box and in the address bar.")
-    ctx.print("Underlined paths can be added to the input box by clicking on them.")
+    ctx.println("Files can be imported by drag-and-drop.")
+    ctx.println("Current directory is shown above the input box and in the address bar.")
+    ctx.println("Underlined paths can be added to the input box by clicking on them.")
     
-    ctx.print("Here's some available commands:")
+    ctx.println("Here's some available commands:")
     
     let dl = document.createElement("dl")
     let descriptions = {
@@ -277,7 +276,7 @@ help(ctx, args) {
         dl.appendChild(dd)
     }
     
-    ctx.out.appendChild(dl)
+    ctx.println(dl.innerHTML)
 },
 
 // FIXME: doesn't work, even with CORS-enabled sites T.T
@@ -307,12 +306,12 @@ fetch(ctx, args) {
         
         // no name given
         if (i == args.length) {
-            throw new Error("No name given")
+            throw "No name given"
         }
         
         // contains '/' (invalid name)
         if (args[i].includes("/")) {
-            throw new Error(`Invalid name: ${args[i]}`)
+            throw `Invalid name: ${args[i]}`
         }
         
         name = args[i]
@@ -345,8 +344,8 @@ clear(ctx, _) {
 /*
 // copies file in cwd into folder path
 cp(ctx, args) {
-    let dest = ctx.resolve_path(args.pop())
-    let src = ctx.resolve_path(args.pop())
+    let dest = ctx.canonicalize(args.pop())
+    let src = ctx.canonicalize(args.pop())
     
     if (ctx.is_file(src) && ctx.is_file(dest)) {
         
@@ -366,11 +365,11 @@ end(ctx, args) {},
 // opens file with full text editor capabilities
 ed(ctx, args) {
     let filename = args[0] || "default.txt"
-    let path = "/" + ctx.resolve_path(filename).join("/")
+    let path = ctx.canonicalize(filename)
     let file = ctx.open(path)
     
     if (ctx.is_dir(file)) {
-        throw new Error(`Not a file: <kbd>${filename}</kbd>`)
+        throw `Not a file: <kbd>${filename}</kbd>`
     }
     
     console.assert(ctx.is_file(file), "Neither a folder nor a file was given!")
@@ -390,7 +389,7 @@ ed(ctx, args) {
         save_button.removeEventListener("click", save)
         save_button.disabled = true
         textarea.disabled = true
-        ctx.print("Saved")
+        ctx.println("Saved")
     })
     
     reader.readAsText(file)
