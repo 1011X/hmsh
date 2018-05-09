@@ -1,3 +1,5 @@
 # Hypermedia shell
 
-Hi! There's nothing here yet, but you can check out the [proof-of-concept in the glitch branch](https://github.com/1011X/hmsh/tree/glitch).
+Hi! This is a web application that uses web technologies to simulate what a hypettext terminal might look like.
+
+You can check out a live version of it at [hmsh.glitch.me].

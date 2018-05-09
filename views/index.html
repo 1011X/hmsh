@@ -1,0 +1,28 @@
+<!-- This is a static file -->
+<!-- served from your routes in server.js -->
+
+<!-- You might want to try something fancier: -->
+<!-- html/nunjucks docs: http://mozilla.github.io/nunjucks/ -->
+<!-- jade: http://jade-lang.com/ -->
+<!-- haml: http://haml.info/tutorial.html -->
+<!-- hbs(handlebars): http://handlebarsjs.com/expressions.html -->
+
+<!doctype html>
+<html>
+<head>
+	<title>hmsh</title>
+	<link rel="stylesheet" href="/style.css">
+	<meta charset="utf-8">
+	<script src="/command-history.js"></script>
+	<script src="/commands.js"></script>
+</head>
+<body>
+    <div id="output">
+        <h1>Welcome to HyperShell!</h1>
+        <p>Type "help" for commands you can use.</p>
+    </div>
+    <div id="cwd">/</div>
+    <input id="input" autofocus tabindex="1" placeholder="Enter a command">
+	<script src="/client.js"></script>
+</body>
+</html>

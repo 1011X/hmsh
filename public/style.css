@@ -1,0 +1,104 @@
+/* styles */
+/* called by your view template */
+
+/* You might want to try something fancier: */
+/* less: http://lesscss.org/ */
+
+* {
+    margin: 0;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-flow: column;
+}
+
+#input {
+  flex: initial;
+  font-family: monospace;
+  font-size: 12pt;
+  padding: 5px;
+  border: 0;
+  border-top: 1px solid black;
+}
+
+#cwd {
+  flex: initial;
+  font-family: monospace;
+  font-size: 12pt;
+  padding: 5px;
+  border: 0;
+  border-top: 1px solid black;
+}
+
+#output {
+    padding: 4px;
+    flex: auto;
+    overflow-y: auto;
+}
+
+#output > * {
+    margin: 4px;
+}
+
+.error {
+  background: #f77;
+  margin: 2px;
+  padding: 2px;
+}
+
+.error::before {
+  content: "✕ ";
+}
+
+.input {
+    font-size: 12pt;
+    margin: 2px;
+    padding: 2px;
+    background-color: #ccc;
+}
+
+.input::before {
+    content: "← ";
+}
+
+.output {
+    font-size: 12pt;
+    padding: 3px;
+}
+
+.output::before {
+    content: "→ ";
+}
+
+.path {
+    text-decoration: underline;
+}
+
+.path:hover {
+    cursor: pointer;
+}
+
+dt {
+    margin-top: 0.5em;
+}
+
+dd {
+    margin: 0 0 0.5em 1.5em;
+}
+
+li {
+    list-style-type: circle;
+}
+
+ul > details {
+    margin-left: -1em;
+}
+
+kbd {
+  font-size: 11pt;
+}
